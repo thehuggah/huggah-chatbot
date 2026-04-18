@@ -150,8 +150,7 @@ app.post("/api/chat", async (req, res) => {
           role: "user",
           content: buildUserPrompt({ message })
         }
-      ],
-      temperature: 0.3
+      ]
     });
 
     const answer = (completion.output_text || "").trim();
