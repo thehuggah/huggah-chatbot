@@ -40,25 +40,25 @@ function isValidTurkishPhone(phone = "") {
 }
 
 function buildContext() {
-  const products = knowledgeBase.products
-    .map((p) => {
-      const benefitsText = p.benefits?.length
-        ? `\nFaydalar: ${p.benefits.join(", ")}`
-        : "";
+const products = knowledgeBase.products
+  .map((p) => {
+    const benefitsText = p.benefits?.length
+      ? `\nFaydalar: ${p.benefits.join(", ")}`
+      : "";
 
-      const ingredientsText = p.ingredients?.length
-        ? `\nİçerikler: ${p.ingredients.join(", ")}`
-        : "";
+    const ingredientsText = p.ingredients?.length
+      ? `\nİçerikler: ${p.ingredients.join(", ")}`
+      : "";
 
-      const claimsText = p.claims?.length
-        ? `\nClaimler: ${p.claims.join(", ")}`
-        : "";
+    const claimsText = p.claims?.length
+      ? `\nClaimler: ${p.claims.join(", ")}`
+      : "";
 
-      return `Ürün: ${p.name}
+    return `Ürün: ${p.name}
 Anahtar kelimeler: ${p.aliases.join(", ")}
 Özet: ${p.summary}${benefitsText}${ingredientsText}${claimsText}`;
-    })
-    .join("\n\n");
+  })
+  .join("\n\n");
 
   const faq = knowledgeBase.faq
     .map((f) => `Soru: ${f.q}\nCevap: ${f.a}`)
