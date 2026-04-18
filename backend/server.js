@@ -102,17 +102,23 @@ function keywordRetrieve(message) {
     return text.includes(q) || q.includes(text);
   });
 
+  const isGreeting = greetingWords.some((word) => text.includes(word));
+  const isShippingQuestion = shippingWords.some((word) => text.includes(word));
+  const isIngredientQuestion = ingredientWords.some((word) => text.includes(word));
+  const isReturnQuestion = returnWords.some((word) => text.includes(word));
+  const isOrganicQuestion = organicWords.some((word) => text.includes(word));
+
   return {
     matchedProducts,
     matchedFaq,
     lowSignal:
       matchedProducts.length === 0 &&
       matchedFaq.length === 0 &&
-      !greetingWords.some((word) => text.includes(word)) &&
-      !shippingWords.some((word) => text.includes(word)) &&
-      !ingredientWords.some((word) => text.includes(word)) &&
-      !returnWords.some((word) => text.includes(word)) &&
-      !organicWords.some((word) => text.includes(word))
+      !isGreeting &&
+      !isShippingQuestion &&
+      !isIngredientQuestion &&
+      !isReturnQuestion &&
+      !isOrganicQuestion
   };
 }
 
