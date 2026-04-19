@@ -51,7 +51,8 @@ function buildWhatsAppLink(topic = "destek") {
     destek: "Merhaba, destek almak istiyorum.",
     kargo: "Merhaba, kargo süresi hakkında bilgi almak istiyorum.",
     iade: "Merhaba, iade süreci hakkında bilgi almak istiyorum.",
-    iletisim: "Merhaba, sizinle iletişime geçmek istiyorum."
+    iletisim: "Merhaba, sizinle iletişime geçmek istiyorum.",
+    urun: "Merhaba, ürün hakkında bilgi almak istiyorum."
   };
 
   const text = messages[topic] || messages.destek;
@@ -60,7 +61,7 @@ function buildWhatsAppLink(topic = "destek") {
 
 function buildBaseContext() {
   const siteInfo = Object.entries(knowledgeBase.siteInfo || {})
-    .map(([k, v]) => Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`)
+    .map(([k, v]) => (Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`))
     .join("\n");
 
   const faq = (knowledgeBase.faq || [])
@@ -72,7 +73,10 @@ function buildBaseContext() {
     .join("\n");
 
   const products = (knowledgeBase.productCards || [])
-    .map((p) => `Ürün: ${p.name}\nKategori: ${p.category}\nLink: ${p.url}\nÖzet: ${p.summary}`)
+    .map(
+      (p) =>
+        `Ürün: ${p.name}\nKategori: ${p.category}\nLink: ${p.url}\nÖzet: ${p.summary}`
+    )
     .join("\n\n");
 
   return `
@@ -103,7 +107,7 @@ function detectQuickAnswer(message = "") {
   if (["merhaba", "selam", "selamlar", "iyi günler", "hello", "hi"].includes(text)) {
     return {
       answer:
-        "Merhaba 🤍 Size ürünler, içerikler, kargo, kampanya ve genel site bilgileri konusunda yardımcı olabilirim. Dilerseniz aklınızdaki ürünü yazabilirsiniz 🌿",
+        "Merhaba 🤍 Size ürünler, içerikler, kargo, kampanya ve genel site bilgileri konusunda yardımcı olabilirim. İsterseniz aklınızdaki ürünü ya da ihtiyacınızı yazabilirsiniz 🌿",
       links: []
     };
   }
@@ -111,30 +115,67 @@ function detectQuickAnswer(message = "") {
   return null;
 }
 
-function getMatchedCards(message = "") {
-  const text = message.toLowerCase();
-  return (knowledgeBase.productCards || []).filter((p) =>
+function getMatchedCards(message = "", sourcePage = "") {
+  const text = `${message} ${sourcePage}`.toLowerCase();
+
+  const matched = (knowledgeBase.productCards || []).filter((p) =>
     (p.aliases || []).some((a) => text.includes(a.toLowerCase())) ||
     text.includes((p.name || "").toLowerCase())
   );
+
+  if (matched.length) return matched;
+
+  // ürün sayfasındaysa ilgili ürünü öne çıkar
+  const byPage = (knowledgeBase.productCards || []).find((p) => {
+    try {
+      return sourcePage && sourcePage.includes(new URL(p.url).pathname);
+    } catch {
+      return false;
+    }
+  });
+
+  return byPage ? [byPage] : [];
+}
+
+function buildProductLinks(cards = []) {
+  return cards.map((card) => ({
+    type: "product",
+    title: card.name,
+    subtitle: card.category,
+    url: card.url,
+    image: card.image,
+    ctaPrimary: "Ürünü İncele",
+    ctaPrimaryUrl: card.url
+  }));
+}
+
+function buildContactLinks() {
+  return [
+    {
+      type: "contact",
+      title: "İletişim",
+      subtitle: "Destek ekibine ulaşın",
+      url: knowledgeBase.links?.contact || "",
+      ctaPrimary: "İletişim Sayfası",
+      ctaPrimaryUrl: knowledgeBase.links?.contact || ""
+    },
+    {
+      type: "contact",
+      title: "WhatsApp Destek",
+      subtitle: "Hızlı destek",
+      url: "https://huggah-chatbot.onrender.com/go/whatsapp?topic=iletisim",
+      ctaPrimary: "WhatsApp",
+      ctaPrimaryUrl: "https://huggah-chatbot.onrender.com/go/whatsapp?topic=iletisim"
+    }
+  ];
 }
 
 function buildHelpfulLinks(message = "", cards = []) {
   const text = message.toLowerCase();
-  const links = [];
+  let links = [];
 
-  for (const card of cards) {
-    links.push({
-      type: "product",
-      title: card.name,
-      subtitle: card.category,
-      url: card.url,
-      image: card.image,
-      ctaPrimary: "Ürünü İncele",
-      ctaPrimaryUrl: card.url,
-      ctaSecondary: "Sepete Git",
-      ctaSecondaryUrl: card.url
-    });
+  if (cards.length) {
+    links.push(...buildProductLinks(cards));
   }
 
   if (text.includes("kargo") || text.includes("teslimat")) {
@@ -143,11 +184,8 @@ function buildHelpfulLinks(message = "", cards = []) {
       title: "Kargo ve Teslimat Politikası",
       subtitle: "Politika",
       url: knowledgeBase.links?.shippingPolicy || "",
-      image: "",
       ctaPrimary: "Sayfayı Aç",
-      ctaPrimaryUrl: knowledgeBase.links?.shippingPolicy || "",
-      ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=kargo`
+      ctaPrimaryUrl: knowledgeBase.links?.shippingPolicy || ""
     });
   }
 
@@ -157,11 +195,8 @@ function buildHelpfulLinks(message = "", cards = []) {
       title: "İptal / İade Politikası",
       subtitle: "Politika",
       url: knowledgeBase.links?.refundPolicy || "",
-      image: "",
       ctaPrimary: "Sayfayı Aç",
-      ctaPrimaryUrl: knowledgeBase.links?.refundPolicy || "",
-      ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=iade`
+      ctaPrimaryUrl: knowledgeBase.links?.refundPolicy || ""
     });
   }
 
@@ -171,31 +206,34 @@ function buildHelpfulLinks(message = "", cards = []) {
     text.includes("mail") ||
     text.includes("email") ||
     text.includes("e-posta") ||
-    text.includes("whatsapp")
+    text.includes("whatsapp") ||
+    text.includes("daha fazla bilgi") ||
+    text.includes("detaylı bilgi") ||
+    text.includes("bilgi almak istiyorum")
   ) {
-    links.push({
-      type: "contact",
-      title: "İletişim",
-      subtitle: "Destek",
-      url: knowledgeBase.links?.contact || "",
-      image: "",
-      ctaPrimary: "İletişim Sayfası",
-      ctaPrimaryUrl: knowledgeBase.links?.contact || "",
-      ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=iletisim`
-    });
+    links.push(...buildContactLinks());
   }
 
   const seen = new Set();
-  return links
-    .filter((x) => x.url || x.ctaSecondaryUrl)
-    .filter((x) => {
-      const key = `${x.title}-${x.url}-${x.ctaSecondaryUrl}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 4);
+  return links.filter((x) => {
+    const key = `${x.title}-${x.ctaPrimaryUrl}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 4);
+}
+
+function shouldShowContactOptions(message = "", answer = "") {
+  const text = `${message} ${answer}`.toLowerCase();
+  return (
+    text.includes("iletişim") ||
+    text.includes("whatsapp") ||
+    text.includes("daha fazla bilgi") ||
+    text.includes("detaylı bilgi") ||
+    text.includes("ulaş") ||
+    text.includes("yardımcı olayım") ||
+    text.includes("yardımcı olabiliriz")
+  );
 }
 
 function getSession(sessionId) {
@@ -306,8 +344,7 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const matchedCards = getMatchedCards(message);
-    const helpfulLinks = buildHelpfulLinks(message, matchedCards);
+    const matchedCards = getMatchedCards(message, sourcePage);
     const ragChunks = searchChunks(`${message} ${sourcePage || ""}`, 8);
 
     const context = `${buildBaseContext()}\n\nRAG:\n${buildRagContext(ragChunks)}`;
@@ -337,7 +374,7 @@ app.post("/api/chat", async (req, res) => {
 
     if (shouldFallback) {
       const fallbackAnswer =
-        "Sizi yanlış yönlendirmek istemem 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz info@thehuggah.com üzerinden de bizimle iletişime geçebilirsiniz.";
+        "Sizi yanlış yönlendirmek istemem 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz iletişim veya WhatsApp üzerinden de bize ulaşabilirsiniz.";
 
       await maybeSendToWebhook({
         type: "fallback_question",
@@ -355,8 +392,21 @@ app.post("/api/chat", async (req, res) => {
         success: true,
         fallback: true,
         answer: fallbackAnswer,
-        links: helpfulLinks
+        links: [...buildHelpfulLinks(message, matchedCards), ...buildContactLinks()].slice(0, 4)
       });
+    }
+
+    let links = buildHelpfulLinks(message, matchedCards);
+
+    if (shouldShowContactOptions(message, answer)) {
+      links = [...links, ...buildContactLinks()];
+      const seen = new Set();
+      links = links.filter((x) => {
+        const key = `${x.title}-${x.ctaPrimaryUrl}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 4);
     }
 
     saveSessionTurn(sessionId, message, answer);
@@ -365,13 +415,13 @@ app.post("/api/chat", async (req, res) => {
       success: true,
       fallback: false,
       answer,
-      links: helpfulLinks
+      links
     });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
       error:
-        "Şu anda teknik bir aksaklık oluştu 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz info@thehuggah.com üzerinden de bizimle iletişime geçebilirsiniz."
+        "Şu anda teknik bir aksaklık oluştu 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz iletişim veya WhatsApp üzerinden de bize ulaşabilirsiniz."
     });
   }
 });
