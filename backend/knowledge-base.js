@@ -3,130 +3,122 @@ export const knowledgeBase = {
     name: "Huggah Naturals",
     slogan: "Doğayla Kucaklaş",
     positioning:
-      "Anne adayları, anneler ve bebekler için COSMOS Organic sertifikalı, nazik ve güvenilir bakım ürünleri sunan markadır.",
+      "Anne adayları, anneler ve bebekler için organik sertifikalı ve nazik bakım ürünleri sunan bir markadır.",
     contact: {
       email: "info@thehuggah.com",
-      address: "Sultan Selim, Eski Büyükdere Cd. No: 61, 34415 Kağıthane/İstanbul"
+      address: "Sultan Selim, Eski Büyükdere Cd. No: 61, 34415 Kağıthane/İstanbul",
+      supportNote:
+        "Gerekli durumlarda not alınan telefon bilgisi üzerinden kullanıcıya geri dönüş yapılabilir."
     }
+  },
+
+  siteInfo: {
+    freeShipping: "Tüm siparişlerde ücretsiz kargo",
+    campaign: "1500 TL üzeri alışverişe %15 indirim • Kod: HUG1500",
+    badges: [
+      "COSMOS Organic sertifikalı içerik yaklaşımı",
+      "Hayvanlar üzerinde test edilmeyen formüller",
+      "Anne ve bebek bakımına özel yaklaşım",
+      "Hassas cilt odağı"
+    ]
   },
 
   policies: {
     shipping:
-      "Ürün sayfalarında tahmini teslimat zamanı bilgisi gösterilir. Sitede tüm siparişlerde ücretsiz kargo bilgisi yer almaktadır. Kesin teslimat tarihi sipariş anındaki güncel bilgiye göre değişebilir.",
+      "Sitede tüm siparişlerde ücretsiz kargo bilgisi yer almaktadır. Kargo ve teslimatla ilgili en doğru bilgi için sipariş ekranı ve güncel politika bilgileri esas alınmalıdır.",
     returns:
-      "Kozmetik ürünlerde iade ve cayma hakkı yalnızca ürün kutusu tamamen açılmamışsa kabul edilir. Güncel detaylar için ilgili politika sayfası esas alınmalıdır.",
+      "İptal ve iade süreçlerinde güncel politika sayfası esas alınmalıdır.",
     privacy:
-      "Kullanıcı verileri yalnızca onay doğrultusunda destek ve iletişim amacıyla işlenmelidir."
+      "Kullanıcı verileri yalnızca açık onay doğrultusunda destek ve iletişim amacıyla işlenmelidir."
   },
 
   faq: [
     {
       q: "merhaba",
-      a: "Merhaba 🤍 Huggah ürünleri, içerikleri, kullanım alanları, kargo ve genel site bilgileri hakkında yardımcı olabilirim."
-    },
-    {
-      q: "ürünler organik mi",
-      a: "Huggah ürünlerinde COSMOS Organic standardına uygun doğal ve organik içerikler ön plandadır. Detaylar ürün bazında değişebilir."
+      a: "Merhaba 🤍 Huggah ürünleri, içerikleri, kullanım alanları, kargo, kampanya ve genel site bilgileri hakkında yardımcı olabilirim."
     },
     {
       q: "kargo ücretsiz mi",
-      a: "Evet, sitede tüm siparişlerde ücretsiz kargo bilgisi yer almaktadır."
+      a: "Evet 🤍 Sitede tüm siparişlerde ücretsiz kargo bilgisi yer alıyor."
     },
     {
       q: "kargo kaç günde gelir",
-      a: "Ürün sayfalarında tahmini teslimat zamanı gösterilir. Kesin teslimat sipariş anındaki güncel bilgiye göre değişebilir."
+      a: "Teslimat süresi sipariş anındaki güncel bilgiye göre değişebilir. En doğru bilgi için sipariş ekranındaki güncel teslimat bilgisini esas almak gerekir."
+    },
+    {
+      q: "indirim var mı",
+      a: "Şu an sitede 1500 TL üzeri alışverişe %15 indirim bilgisi yer alıyor. Kod: HUG1500 ✨"
+    },
+    {
+      q: "ürünler organik mi",
+      a: "Huggah tarafında COSMOS Organic sertifikalı içerik yaklaşımı ve doğal bakım odağı öne çıkıyor 🌿"
     },
     {
       q: "iade var mı",
-      a: "Kozmetik ürünlerde iade ve cayma hakkı, ürün kutusu tamamen açılmamışsa kabul edilmektedir."
+      a: "İptal ve iade süreçlerinde güncel politika sayfası esas alınmalıdır. İsterseniz ilgili politika bağlantısını paylaşabilirim."
     }
   ],
 
-  products: [
+  links: {
+    homepage: "https://thehuggah.com",
+    discover: "https://thehuggah.com/collections/all",
+    contact: "https://thehuggah.com/pages/contact",
+    shippingPolicy: "https://thehuggah.com/policies/shipping-policy",
+    refundPolicy: "https://thehuggah.com/policies/refund-policy",
+    privacyPolicy: "https://thehuggah.com/policies/privacy-policy"
+  },
+
+  productCards: [
     {
       name: "Çatlak Kremi",
       aliases: [
         "çatlak kremi",
-        "hamile çatlak kremi",
+        "çatlak önleyici krem",
         "stretch mark cream",
+        "hamile çatlak kremi",
         "çatlak bakım kremi"
       ],
+      category: "Anne Bakımı",
+      url:
+        "https://thehuggah.com/products/huggah-organik-dogal-catlak-onleyici-cilt-bakim-kremi-180ml-yogun-nemlendirici-onarici-tum-ciltler-icin",
+      image:
+        "https://thehuggah.com/cdn/shop/files/catlak-oenleyici-cilt-bakim-kremi-180ml-3644047.jpg?v=1775929312&width=360",
       summary:
-        "Huggah Organic Natural Stretch Mark Prevention Skin Care Cream 180 ml; hamilelik, doğum sonrası dönem ve hızlı kilo değişimleri sırasında cilt bakımını desteklemek için geliştirilmiştir.",
-      benefits: [
-        "Cildi yoğun şekilde nemlendirmeye yardımcı olur",
-        "Cilt elastikiyetini desteklemeye yardımcı olur",
-        "Günlük bakım rutininde kullanılabilir"
-      ],
-      ingredients: [
-        "Aloe Vera",
-        "Hindistan Cevizi Yağı",
-        "Zeytinyağı",
-        "Shea Butter",
-        "Tatlı Badem Yağı",
-        "Jojoba Yağı",
-        "Centella Asiatica"
-      ],
-      claims: [
-        "%98,85 doğal kökenli",
-        "Vegan",
-        "COSMOS Organic vurgulu marka yaklaşımı"
-      ]
+        "Hamilelik ve bakım döneminde cildi desteklemek için geliştirilen çatlak bakım ürünüdür."
     },
     {
       name: "Göğüs Ucu Balmı",
       aliases: [
         "göğüs ucu balmı",
+        "nipple balm",
         "nipple care balm",
         "emzirme balmı",
         "göğüs ucu bakım balmı"
       ],
+      category: "Anne Bakımı",
+      url:
+        "https://thehuggah.com/products/huggah-100-organik-dogal-gogus-ucu-balmi-50-ml-emzirme-doenemi-bakimi-hassas-ve-normal-ciltler-icin",
+      image:
+        "https://thehuggah.com/cdn/shop/files/huggah-organik-dogal-goegues-ucu-balmi-50-ml-emzirme-doenemi-2644380.jpg?v=1774745828&width=360",
       summary:
-        "Huggah 100% Organic Natural Nipple Skin Care Balm 50 ml, emzirme döneminde bakım ihtiyacı olan bölgeyi beslemeye ve yumuşatmaya yardımcı olmak için geliştirilmiştir.",
-      benefits: [
-        "Göğüs ucu çevresini yumuşatmaya yardımcı olur",
-        "Bakım ihtiyacı olan bölgeyi beslemeyi destekler",
-        "Dudak ve el gibi farklı bölgelerde de kullanılabilir"
-      ],
-      ingredients: [
-        "Avokado Yağı",
-        "Shea Butter",
-        "Hindistan Cevizi Yağı",
-        "Calendula Yağı",
-        "Argan Yağı",
-        "Jojoba Yağı",
-        "Arnika Yağı"
-      ],
-      claims: [
-        "%100 organik ve doğal kökenli vurgusu",
-        "Emzirme dönemine uygun bakım odağı"
-      ]
+        "Emzirme dönemindeki bakım ihtiyacına destek olmak üzere geliştirilen göğüs ucu bakım balmıdır."
     },
     {
       name: "Pişik Kremi",
       aliases: [
         "pişik kremi",
+        "bebek pişik kremi",
         "rash cream",
-        "bebek bakım kremi",
-        "diaper rash cream"
+        "diaper rash cream",
+        "pişik önleyici krem"
       ],
+      category: "Bebek Bakımı",
+      url:
+        "https://thehuggah.com/products/huggah-organik-dogal-pisik-onleyici-bebek-bakim-kremi-100ml-x-2-adet",
+      image:
+        "https://thehuggah.com/cdn/shop/files/huggah-organik-pisik-oenleyici-bebek-bakim-kremi-100-ml-x-2-2122159.jpg?v=1775988486&width=360",
       summary:
-        "Huggah Organic Baby Diaper Rash Cream 100 ml, bebeğin hassas cildi için geliştirilen günlük bakım ürünüdür.",
-      benefits: [
-        "Bez bölgesinde koruyucu bakım sunmaya yardımcı olur",
-        "Tahriş hissini yatıştırmaya yardımcı olur",
-        "Günlük kullanıma uygundur"
-      ],
-      ingredients: [
-        "Aloe Vera",
-        "Shea Butter"
-      ],
-      claims: [
-        "%99,19 doğal içerik",
-        "Dermatolojik olarak test edilmiştir",
-        "Vegan",
-        "COSMOS sertifikalı"
-      ]
+        "Bebeklerin hassas cildi için geliştirilen günlük bakım ürünüdür."
     },
     {
       name: "Bebek Şampuanı & Vücut Şampuanı",
@@ -135,21 +127,15 @@ export const knowledgeBase = {
         "vücut şampuanı",
         "baby shampoo",
         "body wash",
-        "2 in 1 şampuan"
+        "2 in 1 şampuan",
+        "2si 1 arada şampuan"
       ],
+      category: "Bebek Bakımı",
+      url: "https://thehuggah.com/collections/all",
+      image:
+        "https://thehuggah.com/cdn/shop/files/organik-bebek-sac-ve-vucut-sampuani-320-ml-x-2-avantaj-seti.jpg?v=1775988486&width=360",
       summary:
-        "Huggah Organic Baby Hair and Body Shampoo (2 in 1) 320 ml, hassas ciltler için geliştirilen nazik temizleme ürünüdür.",
-      benefits: [
-        "Saç ve cildi nazikçe temizlemeye yardımcı olur",
-        "Hassas ciltlere uygun kullanım sunar",
-        "Günlük banyo rutinine uygundur"
-      ],
-      claims: [
-        "Hassas cilt",
-        "Göz yakmayan",
-        "Konak karşıtı",
-        "Kolay tarama"
-      ]
+        "Bebeklerin saç ve cilt temizliği için geliştirilen 2'si 1 arada nazik temizleme ürünüdür."
     }
   ]
 };
