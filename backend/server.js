@@ -2,22 +2,22 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import { execSync } from "child_process";
 import { OpenAI } from "openai";
 import { knowledgeBase } from "./knowledge-base.js";
+import { normalizePhone, isValidTurkishPhone } from "./utils.js";
+import { loadIndex, getIndexMeta, searchChunks, buildRagContext } from "./rag.js";
 import { buildSystemPrompt, buildUserPrompt } from "./prompts.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const sessions = new Map();
 
 app.use(helmet());
-app.use(express.json());
-
+app.use(express.json({ limit: "1mb" }));
 app.use(
   cors({
     origin: [
@@ -28,110 +28,13 @@ app.use(
   })
 );
 
-const leads = [];
-
-function normalizePhone(phone = "") {
-  return phone.replace(/[^\d+]/g, "").trim();
-}
-
-function isValidTurkishPhone(phone = "") {
-  const normalized = normalizePhone(phone);
-  return /^(\+?90|0)?5\d{9}$/.test(normalized);
-}
-
-function buildContext() {
-const products = knowledgeBase.products
-  .map((p) => {
-    const benefitsText = p.benefits?.length
-      ? `\nFaydalar: ${p.benefits.join(", ")}`
-      : "";
-
-    const ingredientsText = p.ingredients?.length
-      ? `\nİçerikler: ${p.ingredients.join(", ")}`
-      : "";
-
-    const claimsText = p.claims?.length
-      ? `\nClaimler: ${p.claims.join(", ")}`
-      : "";
-
-    return `Ürün: ${p.name}
-Anahtar kelimeler: ${p.aliases.join(", ")}
-Özet: ${p.summary}${benefitsText}${ingredientsText}${claimsText}`;
-  })
-  .join("\n\n");
-
-  const faq = knowledgeBase.faq
-    .map((f) => `Soru: ${f.q}\nCevap: ${f.a}`)
-    .join("\n\n");
-
-  const policies = Object.entries(knowledgeBase.policies)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join("\n");
-
-  return `
-Marka: ${knowledgeBase.brand.name}
-Konumlandırma: ${knowledgeBase.brand.positioning}
-İletişim: ${knowledgeBase.brand.contact.email}
-
-${products}
-
-SSS:
-${faq}
-
-Politikalar:
-${policies}
-`;
-}
-
-function keywordRetrieve(message) {
-  const text = message.toLowerCase().trim();
-
-  const greetingWords = ["merhaba", "selam", "selamlar", "iyi günler", "hello", "hi"];
-  const shippingWords = ["kargo", "teslimat", "kaç günde", "ne zaman gelir", "ücretsiz kargo"];
-  const ingredientWords = ["içerik", "içindekiler", "ingredients", "formül"];
-  const returnWords = ["iade", "cayma", "refund", "iptal"];
-  const organicWords = ["organik", "cosmos", "sertifika", "sertifikalı", "vegan"];
-
-  const matchedProducts = knowledgeBase.products.filter((product) =>
-    product.aliases.some((alias) => text.includes(alias.toLowerCase())) ||
-    text.includes(product.name.toLowerCase())
-  );
-
-  const matchedFaq = knowledgeBase.faq.filter((item) => {
-    const q = item.q.toLowerCase();
-    return text.includes(q) || q.includes(text);
-  });
-
-  const isGreeting = greetingWords.some((word) => text.includes(word));
-  const isShippingQuestion = shippingWords.some((word) => text.includes(word));
-  const isIngredientQuestion = ingredientWords.some((word) => text.includes(word));
-  const isReturnQuestion = returnWords.some((word) => text.includes(word));
-  const isOrganicQuestion = organicWords.some((word) => text.includes(word));
-
-  return {
-    matchedProducts,
-    matchedFaq,
-    lowSignal:
-      matchedProducts.length === 0 &&
-      matchedFaq.length === 0 &&
-      !isGreeting &&
-      !isShippingQuestion &&
-      !isIngredientQuestion &&
-      !isReturnQuestion &&
-      !isOrganicQuestion
-  };
-}
-
-// BURASI YENİ: webhook gönderme
 async function maybeSendToWebhook(payload) {
   if (!process.env.ADMIN_WEBHOOK_URL) return;
 
   try {
     const response = await fetch(process.env.ADMIN_WEBHOOK_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -142,21 +45,210 @@ async function maybeSendToWebhook(payload) {
   }
 }
 
+function buildBaseContext() {
+  const siteInfo = Object.entries(knowledgeBase.siteInfo || {})
+    .map(([k, v]) => Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`)
+    .join("\n");
+
+  const faq = (knowledgeBase.faq || [])
+    .map((f) => `Soru: ${f.q}\nCevap: ${f.a}`)
+    .join("\n\n");
+
+  const policyText = Object.entries(knowledgeBase.policies || {})
+    .map(([k, v]) => `${k}: ${v}`)
+    .join("\n");
+
+  const products = (knowledgeBase.productCards || [])
+    .map((p) => `Ürün: ${p.name}\nKategori: ${p.category}\nLink: ${p.url}\nÖzet: ${p.summary}`)
+    .join("\n\n");
+
+  return `
+Marka: ${knowledgeBase.brand?.name || ""}
+Slogan: ${knowledgeBase.brand?.slogan || ""}
+Konumlandırma: ${knowledgeBase.brand?.positioning || ""}
+İletişim e-posta: ${knowledgeBase.brand?.contact?.email || ""}
+İletişim adresi: ${knowledgeBase.brand?.contact?.address || ""}
+Telefon geri dönüş notu: ${knowledgeBase.brand?.contact?.supportNote || ""}
+
+Site bilgileri:
+${siteInfo}
+
+SSS:
+${faq}
+
+Politikalar:
+${policyText}
+
+Ürünler:
+${products}
+`;
+}
+
+function detectQuickAnswer(message = "") {
+  const text = message.toLowerCase().trim();
+
+  if (["merhaba", "selam", "selamlar", "iyi günler", "hello", "hi"].includes(text)) {
+    return {
+      answer:
+        "Merhaba 🤍 Size ürünler, içerikler, kargo, kampanya ve genel site bilgileri konusunda yardımcı olabilirim. Dilerseniz aklınızdaki ürünü yazabilirsiniz 🌿",
+      links: []
+    };
+  }
+
+  return null;
+}
+
+function getMatchedCards(message = "") {
+  const text = message.toLowerCase();
+  return (knowledgeBase.productCards || []).filter((p) =>
+    (p.aliases || []).some((a) => text.includes(a.toLowerCase())) ||
+    text.includes((p.name || "").toLowerCase())
+  );
+}
+
+function buildHelpfulLinks(message = "", cards = []) {
+  const text = message.toLowerCase();
+  const links = [];
+
+  for (const card of cards) {
+    links.push({
+      type: "product",
+      title: card.name,
+      subtitle: card.category,
+      url: card.url,
+      image: card.image,
+      ctaPrimary: "Ürünü İncele",
+      ctaPrimaryUrl: card.url,
+      ctaSecondary: "Sepete Git",
+      ctaSecondaryUrl: card.url
+    });
+  }
+
+  if (text.includes("kargo") || text.includes("teslimat")) {
+    links.push({
+      type: "policy",
+      title: "Kargo ve Teslimat Politikası",
+      subtitle: "Politika",
+      url: knowledgeBase.links?.shippingPolicy || "",
+      image: "",
+      ctaPrimary: "Sayfayı Aç",
+      ctaPrimaryUrl: knowledgeBase.links?.shippingPolicy || "",
+      ctaSecondary: "WhatsApp",
+      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, kargo süresi hakkında bilgi almak istiyorum.")}`
+    });
+  }
+
+  if (text.includes("iade") || text.includes("iptal") || text.includes("cayma")) {
+    links.push({
+      type: "policy",
+      title: "İptal / İade Politikası",
+      subtitle: "Politika",
+      url: knowledgeBase.links?.refundPolicy || "",
+      image: "",
+      ctaPrimary: "Sayfayı Aç",
+      ctaPrimaryUrl: knowledgeBase.links?.refundPolicy || "",
+      ctaSecondary: "WhatsApp",
+      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, iade süreci hakkında bilgi almak istiyorum.")}`
+    });
+  }
+
+  if (
+    text.includes("iletişim") ||
+    text.includes("telefon") ||
+    text.includes("mail") ||
+    text.includes("email") ||
+    text.includes("e-posta") ||
+    text.includes("whatsapp")
+  ) {
+    links.push({
+      type: "contact",
+      title: "İletişim",
+      subtitle: "Destek",
+      url: knowledgeBase.links?.contact || "",
+      image: "",
+      ctaPrimary: "İletişim Sayfası",
+      ctaPrimaryUrl: knowledgeBase.links?.contact || "",
+      ctaSecondary: "WhatsApp",
+      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, destek almak istiyorum.")}`
+    });
+  }
+
+  const seen = new Set();
+  return links
+    .filter((x) => x.url || x.ctaSecondaryUrl)
+    .filter((x) => {
+      const key = `${x.title}-${x.url}-${x.ctaSecondaryUrl}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4);
+}
+
+function getSession(sessionId) {
+  if (!sessionId) return [];
+  return sessions.get(sessionId) || [];
+}
+
+function saveSessionTurn(sessionId, userMessage, assistantMessage) {
+  if (!sessionId) return;
+  const current = sessions.get(sessionId) || [];
+  current.push({ user: userMessage, assistant: assistantMessage });
+  sessions.set(sessionId, current.slice(-6));
+}
+
+function summarizeHistory(history = []) {
+  if (!history.length) return "yok";
+  return history
+    .map((x, i) => `Tur ${i + 1} Kullanıcı: ${x.user} | Asistan: ${x.assistant}`)
+    .join("\n");
+}
+
+function inferPageContext(sourcePage = "") {
+  const page = String(sourcePage || "").toLowerCase();
+  if (!page) return "yok";
+
+  const matched = (knowledgeBase.productCards || []).find((p) => {
+    try {
+      return page.includes(new URL(p.url).pathname.toLowerCase());
+    } catch {
+      return false;
+    }
+  });
+
+  if (matched) {
+    return `Kullanıcı şu anda ürün sayfasında olabilir: ${matched.name} / ${matched.category}`;
+  }
+  if (page.includes("/products/")) return "Kullanıcı bir ürün detay sayfasında.";
+  if (page.includes("/collections/")) return "Kullanıcı bir koleksiyon sayfasında.";
+  if (page.includes("/policies/")) return "Kullanıcı bir politika sayfasında.";
+  return "Kullanıcı genel site sayfasında.";
+}
+
+async function boot() {
+  if (String(process.env.CRAWL_ON_BOOT).toLowerCase() === "true") {
+    try {
+      execSync("node crawler.js", { stdio: "inherit" });
+    } catch (err) {
+      console.error("crawler boot error", err.message);
+    }
+  }
+  await loadIndex();
+}
+
 app.get("/health", (req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, index: getIndexMeta() });
 });
 
 app.post("/api/lead", async (req, res) => {
-  const { name, phone, consent } = req.body || {};
+  const { name, phone, consent, sourcePage } = req.body || {};
 
   if (!name || !phone) {
     return res.status(400).json({ error: "İsim ve telefon zorunludur." });
   }
-
   if (!consent) {
     return res.status(400).json({ error: "Onay zorunludur." });
   }
-
   if (!isValidTurkishPhone(phone)) {
     return res.status(400).json({ error: "Geçerli telefon giriniz." });
   }
@@ -166,37 +258,54 @@ app.post("/api/lead", async (req, res) => {
     name,
     phone: normalizePhone(phone),
     consent: true,
+    sourcePage: sourcePage || "",
     createdAt: new Date().toISOString()
   };
 
-  leads.push(lead);
-
-  // BURASI YENİ: form doldurulunca Google Sheet’e gönder
   await maybeSendToWebhook({
     type: "new_lead",
     lead
   });
 
-  res.json({ success: true, leadId: lead.id });
+  return res.json({ success: true, leadId: lead.id });
 });
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, leadId, name, phone } = req.body || {};
-
+    const { message, leadId, name, phone, sessionId, sourcePage } = req.body || {};
     if (!message) {
       return res.status(400).json({ error: "Mesaj boş olamaz." });
     }
 
-    const retrieval = keywordRetrieve(message);
-    const context = buildContext();
+    const quick = detectQuickAnswer(message);
+    if (quick) {
+      saveSessionTurn(sessionId, message, quick.answer);
+      return res.json({
+        success: true,
+        fallback: false,
+        answer: quick.answer,
+        links: quick.links || []
+      });
+    }
+
+    const matchedCards = getMatchedCards(message);
+    const helpfulLinks = buildHelpfulLinks(message, matchedCards);
+    const ragChunks = searchChunks(`${message} ${sourcePage || ""}`, 8);
+
+    const context = `${buildBaseContext()}\n\nRAG:\n${buildRagContext(ragChunks)}`;
+    const history = summarizeHistory(getSession(sessionId));
+    const pageContext = inferPageContext(sourcePage);
 
     const completion = await client.responses.create({
       model: "gpt-5-mini",
       input: [
         {
           role: "system",
-          content: buildSystemPrompt(context)
+          content: buildSystemPrompt({
+            context,
+            recentHistory: history,
+            pageContext
+          })
         },
         {
           role: "user",
@@ -206,43 +315,51 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const answer = (completion.output_text || "").trim();
-
-    const shouldFallback =
-      retrieval.lowSignal || !answer || answer.includes("FALLBACK_REQUIRED");
+    const shouldFallback = !answer || answer.includes("FALLBACK_REQUIRED");
 
     if (shouldFallback) {
-      // BURASI YENİ: cevap veremediği soruyu Google Sheet’e gönder
+      const fallbackAnswer =
+        "Sizi yanlış yönlendirmek istemem 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz info@thehuggah.com üzerinden de bizimle iletişime geçebilirsiniz.";
+
       await maybeSendToWebhook({
         type: "fallback_question",
         leadId,
         name,
         phone,
         question: message,
+        sourcePage,
         createdAt: new Date().toISOString()
       });
+
+      saveSessionTurn(sessionId, message, fallbackAnswer);
 
       return res.json({
         success: true,
         fallback: true,
-        answer:
-          "Bu konuda sizi yanlış yönlendirmek istemem 🤍 Sorunuzu not aldım. Gerekirse ekibimiz sizinle iletişime geçebilir."
+        answer: fallbackAnswer,
+        links: helpfulLinks
       });
     }
 
-    res.json({
+    saveSessionTurn(sessionId, message, answer);
+
+    return res.json({
       success: true,
       fallback: false,
-      answer
+      answer,
+      links: helpfulLinks
     });
   } catch (err) {
     console.error(err);
-
-    res.status(500).json({
-      error: "Şu anda bir sorun oluştu, lütfen tekrar deneyin."
+    return res.status(500).json({
+      error:
+        "Şu anda teknik bir aksaklık oluştu 🤍 Notunuzu aldım, gerekli olursa telefon bilginiz üzerinden size ulaşılabilir. Dilerseniz info@thehuggah.com üzerinden de bizimle iletişime geçebilirsiniz."
     });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Chatbot çalışıyor: ${PORT}`);
+boot().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Chatbot çalışıyor: ${PORT}`);
+  });
 });
