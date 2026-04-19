@@ -45,6 +45,19 @@ async function maybeSendToWebhook(payload) {
   }
 }
 
+function buildWhatsAppLink(topic = "destek") {
+  const number = process.env.WHATSAPP_NUMBER;
+  const messages = {
+    destek: "Merhaba, destek almak istiyorum.",
+    kargo: "Merhaba, kargo süresi hakkında bilgi almak istiyorum.",
+    iade: "Merhaba, iade süreci hakkında bilgi almak istiyorum.",
+    iletisim: "Merhaba, sizinle iletişime geçmek istiyorum."
+  };
+
+  const text = messages[topic] || messages.destek;
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
 function buildBaseContext() {
   const siteInfo = Object.entries(knowledgeBase.siteInfo || {})
     .map(([k, v]) => Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`)
@@ -134,7 +147,7 @@ function buildHelpfulLinks(message = "", cards = []) {
       ctaPrimary: "Sayfayı Aç",
       ctaPrimaryUrl: knowledgeBase.links?.shippingPolicy || "",
       ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, kargo süresi hakkında bilgi almak istiyorum.")}`
+      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=kargo`
     });
   }
 
@@ -148,7 +161,7 @@ function buildHelpfulLinks(message = "", cards = []) {
       ctaPrimary: "Sayfayı Aç",
       ctaPrimaryUrl: knowledgeBase.links?.refundPolicy || "",
       ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, iade süreci hakkında bilgi almak istiyorum.")}`
+      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=iade`
     });
   }
 
@@ -169,7 +182,7 @@ function buildHelpfulLinks(message = "", cards = []) {
       ctaPrimary: "İletişim Sayfası",
       ctaPrimaryUrl: knowledgeBase.links?.contact || "",
       ctaSecondary: "WhatsApp",
-      ctaSecondaryUrl: `https://wa.me/${process.env.WHATSAPP_NUMBER}?text=${encodeURIComponent("Merhaba, destek almak istiyorum.")}`
+      ctaSecondaryUrl: `https://huggah-chatbot.onrender.com/go/whatsapp?topic=iletisim`
     });
   }
 
@@ -235,6 +248,11 @@ async function boot() {
   }
   await loadIndex();
 }
+
+app.get("/go/whatsapp", (req, res) => {
+  const topic = String(req.query.topic || "destek");
+  return res.redirect(buildWhatsAppLink(topic));
+});
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, index: getIndexMeta() });
